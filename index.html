@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> 스트룹 및 산술 과제 결합 실험 </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        #experiment-container {
+            background-color: white;
+            padding: 30px 50px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 800px;
+        }
+        #instruction-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        #stimulus {
+            font-size: 80px;
+            font-weight: bold;
+            margin: 50px 0;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #timer {
+            font-size: 2em;
+            color: #d9534f;
+            margin-bottom: 20px;
+            visibility: hidden;
+        }
+        /* 응답 영역: 입력창과 버튼만 사용 */
+        #response-area {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        #input-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+            width: 100%;
+            max-width: 300px;
+        }
+        #main-input {
+            padding: 10px;
+            font-size: 1.5em;
+            width: 100%;
+            text-align: center;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+        #submit-button {
+            padding: 10px 30px;
+            font-size: 1.1em;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .start-exp-button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .start-exp-button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none !important; 
+        }
+    </style>
+</head>
+<body>
+
+<div id="experiment-container">
+    <div id="intro-screen">
+        <h2>스트룹 및 산술 과제 결합 실험</h2>
+        <p id="instruction-text">
+            실험은 총 4단계로 진행됩니다. 각 단계의 지시에 따라 **스트룹 문제** 또는 **산술 문제**에 응답해 주세요.
+        </p>
+        <p>스트룹 문제: 화면에 표시되는 **단어의 색깔**을 **타이핑**하여 입력 후 제출</p>
+        <p>산술 문제: **두 자릿수 덧셈/뺄셈**의 계산 값을 **타이핑**하여 입력 후 제출</p>
+        <button id="start-button" class="start-exp-button">실험 시작</button>
+    </div>
+
+    <div id="test-screen" class="hidden">
+        <div id="condition-label"></div>
+        <div id="timer"></div>
+        <div id="stimulus"></div>
+        
+        <div id="response-area">
+            <div id="input-container">
+                <input type="text" id="main-input" placeholder="여기에 입력 후 제출" autocomplete="off">
+                <button id="submit-button">제출</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="results-screen" class="hidden">
+        <h2>실험 종료</h2>
+        <p>모든 실험이 완료되었습니다. 결과는 브라우저 콘솔(F12)에 출력됩니다.</p>
+        <div id="summary"></div>
+    </div>
+</div>
+
+<script>
+    const STIMULUS_DURATION = 20000; // 20초 (밀리초)
+    const FIXATION_DURATION = 0; 
+    const PRACTICE_TRIALS = 3; 
+    const EXTRA_PRACTICE_TRIALS = 2; 
+    const FEEDBACK_DURATION = 1000; 
+
+    const COLORS = {
+        '검정': 'black',
+        '빨강': 'red',
+        '파랑': 'blue',
+        '노랑': 'yellow',
+        '초록': 'green'
+    };
+    const COLOR_NAMES = Object.keys(COLORS); 
+    const COLOR_VALUES = Object.values(COLORS); 
+    
+    const EXPERIMENT_SEQUENCE = [
+        { id: 1, name: "조건 1: 스트룹 테스트", task: "stroop", timed: false }, 
+        { id: 2, name: "조건 2: 산술 문제", task: "arithmetic", timed: false }, 
+        { id: 3, name: "조건 3: 스트룹 테스트", task: "stroop", timed: true }, 
+        { id: 4, name: "조건 4: 산술 문제", task: "arithmetic", timed: true } 
+    ];
+    let currentBlockIndex = 0;
+
+    let experimentData = {};
+    EXPERIMENT_SEQUENCE.forEach(block => {
+        experimentData[`condition${block.id}`] = { 
+            trials: [], 
+            accuracy: 0, 
+            correctCount: 0, 
+            incorrectCount: 0, 
+            avgRT: 0,
+            task: block.task
+        };
+    });
+    
+    let currentConditionId = EXPERIMENT_SEQUENCE[currentBlockIndex].id;
+
+    let trialStartTime = 0; 
+    let currentTrial = null; 
+    let timerInterval = null; 
+    let isResponding = false; 
+
+    let isPractice = false;
+    let isExtraPractice = false;
+    let trialCounter = 0;
+    let practiceCorrectCount = 0;
+
+    const elements = {
+        intro: document.getElementById('intro-screen'),
+        test: document.getElementById('test-screen'),
+        results: document.getElementById('results-screen'),
+        startButton: document.getElementById('start-button'),
+        stimulus: document.getElementById('stimulus'),
+        timer: document.getElementById('timer'),
+        conditionLabel: document.getElementById('condition-label'),
+        summary: document.getElementById('summary'),
+        inputContainer: document.getElementById('input-container'), 
+        mainInput: document.getElementById('main-input'), 
+        submitButton: document.getElementById('submit-button') 
+    };
+    
+    elements.submitButton.addEventListener('click', handleSubmission);
+    elements.mainInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleSubmission();
+        }
+    });
+
+    // --- 자극 생성 로직 ---
+    function createStroopTrial() {
+        const words = COLOR_NAMES;
+        const word = words[Math.floor(Math.random() * words.length)];
+        const colorNames = COLOR_VALUES;
+        const color = colorNames[Math.floor(Math.random() * colorNames.length)];
+        const correctResponse = COLOR_NAMES[COLOR_VALUES.indexOf(color)]; 
+        return { type: 'stroop', word, color, correctResponse: correctResponse };
+    }
+    
+    function createArithmeticTrial() {
+        let num1 = Math.floor(Math.random() * 90) + 10;
+        let num2 = Math.floor(Math.random() * 90) + 10;
+        
+        const operation = Math.random() < 0.5 ? '+' : '-';
+        let problem = '';
+        let correctResponse = 0;
+
+        if (operation === '+') {
+            problem = `${num1} + ${num2} = ?`;
+            correctResponse = num1 + num2;
+        } else {
+            if (num1 < num2) [num1, num2] = [num2, num1];
+            problem = `${num1} - ${num2} = ?`;
+            correctResponse = num1 - num2;
+        }
+        
+        return { type: 'arithmetic', problem, correctResponse: correctResponse.toString() };
+    }
+
+    // --- 자극 제시 로직 ---
+    function presentStimulus(trial) {
+        elements.inputContainer.classList.remove('hidden');
+        elements.mainInput.value = ''; 
+        elements.mainInput.focus();
+
+        if (trial.type === 'stroop') {
+            elements.stimulus.textContent = trial.word;
+            elements.stimulus.style.color = trial.color;
+            elements.mainInput.setAttribute('inputmode', 'text');
+            elements.mainInput.placeholder = '색깔 단어 입력';
+        } else { 
+            elements.stimulus.textContent = trial.problem;
+            elements.stimulus.style.color = 'black'; 
+            elements.mainInput.setAttribute('inputmode', 'numeric');
+            elements.mainInput.placeholder = '계산값 입력';
+        }
+        
+        trialStartTime = performance.now();
+        currentTrial = trial;
+        isResponding = true; 
+    }
+
+    // --- 피드백/Fixation 로직 ---
+    function hideInputElements() {
+        elements.inputContainer.classList.add('hidden');
+    }
+
+    function showFixation() {
+        elements.stimulus.textContent = '+';
+        elements.stimulus.style.color = 'black';
+        currentTrial = null;
+        isResponding = false; 
+        
+        hideInputElements();
+        
+        if (!isPractice && !isExtraPractice) {
+            setTimeout(nextTrial, FIXATION_DURATION); 
+        }
+    }
+    
+    function showFeedback(isCorrect) {
+        elements.stimulus.style.color = isCorrect ? '#28a745' : '#dc3545';
+        elements.stimulus.textContent = isCorrect ? '정답 (Correct)' : '오답 (Incorrect)';
+        
+        hideInputElements(); 
+        
+        setTimeout(() => {
+            elements.stimulus.textContent = ''; 
+            currentTrial = null;
+            isResponding = false; 
+            
+            nextTrial(); 
+        }, FEEDBACK_DURATION);
+    }
+
+    // --- 실험 흐름 로직 ---
+    let experimentStartTime = 0;
+    
+    function startPractice() {
+        isPractice = true;
+        isExtraPractice = false;
+        trialCounter = 0;
+        practiceCorrectCount = 0;
+        
+        elements.intro.classList.add('hidden');
+        elements.test.classList.remove('hidden');
+        elements.conditionLabel.textContent = `연습 문제: 스트룹 ${PRACTICE_TRIALS}회 남음`;
+        
+        nextTrial(); 
+    }
+    
+    function startExtraPractice() {
+        isPractice = false;
+        isExtraPractice = true;
+        trialCounter = 0;
+        practiceCorrectCount = 0; 
+        
+        elements.conditionLabel.textContent = `추가 연습: 스트룹 ${EXTRA_PRACTICE_TRIALS}회 남음`;
+        
+        alert(`이전 연습 문제에서 모두 틀렸으므로 추가 연습 ${EXTRA_PRACTICE_TRIALS}회를 제공합니다. 다시 한번 응답 방식을 익혀보세요.`);
+        
+        nextTrial(); 
+    }
+
+    function startBlock() {
+        const block = EXPERIMENT_SEQUENCE[currentBlockIndex];
+        currentConditionId = block.id;
+        
+        isPractice = false;
+        isExtraPractice = false;
+        trialCounter = 0;
+        
+        elements.test.classList.remove('hidden');
+        elements.conditionLabel.textContent = `${block.name}`;
+        
+        let alertMessage = `새로운 단계가 시작됩니다: ${block.name}. 최대한 빠르게 풀어주세요.`;
+        if (block.timed) {
+            elements.timer.style.visibility = 'visible'; 
+            alertMessage = `[경고: 시간 제한] 이 단계는 20초의 시간 제한이 있습니다! \n\n제한 시간 내에 최대한 많은 문제를 정확하게 풀어주세요! \n\n${block.name}을(를) 시작합니다.`;
+            startTimerDisplay(); 
+        } else {
+            elements.timer.style.visibility = 'hidden';
+            stopTimerDisplay(); 
+        }
+
+        alert(alertMessage);
+        
+        experimentStartTime = performance.now();
+        showFixation(); 
+    }
+
+    function nextTrial() {
+        if (isPractice || isExtraPractice) {
+            if ((isPractice && trialCounter >= PRACTICE_TRIALS) || (isExtraPractice && trialCounter >= EXTRA_PRACTICE_TRIALS)) {
+                if (isPractice) endPractice(); else endExtraPractice();
+                return;
+            }
+            presentStimulus(createStroopTrial());
+            return;
+        }
+
+        if (performance.now() - experimentStartTime >= STIMULUS_DURATION) {
+            endBlock();
+            return;
+        }
+        
+        const currentTask = EXPERIMENT_SEQUENCE[currentBlockIndex].task;
+        
+        let trial;
+        if (currentTask === 'stroop') {
+            trial = createStroopTrial();
+        } else { 
+            trial = createArithmeticTrial();
+        }
+        presentStimulus(trial);
+    }
+
+    function endPractice() {
+        elements.stimulus.textContent = ''; 
+        const accuracy = practiceCorrectCount / PRACTICE_TRIALS;
+
+        if (accuracy === 0) {
+            isPractice = false;
+            startExtraPractice();
+        } else {
+            isPractice = false;
+            isExtraPractice = false;
+            elements.conditionLabel.textContent = "연습 문제 완료! 본 실험을 시작합니다.";
+            setTimeout(startBlock, 3000); 
+        }
+    }
+    
+    function endExtraPractice() {
+        isExtraPractice = false;
+        elements.stimulus.textContent = '';
+        elements.conditionLabel.textContent = "추가 연습 완료! 본 실험을 시작합니다.";
+        setTimeout(startBlock, 3000); 
+    }
+
+    function endBlock() {
+        stopTimerDisplay();
+        isResponding = false; 
+        elements.stimulus.textContent = '';
+        
+        calculateResults(currentConditionId);
+
+        currentBlockIndex++;
+
+        if (currentBlockIndex < EXPERIMENT_SEQUENCE.length) {
+            const nextBlock = EXPERIMENT_SEQUENCE[currentBlockIndex];
+            elements.conditionLabel.textContent = `잠시 휴식 후 다음 단계가 시작됩니다: ${nextBlock.name}`;
+            setTimeout(startBlock, 3000); 
+        } else {
+            showResults();
+        }
+    }
+
+    // --- 통합 응답 처리 로직 ---
+    function recordTrialData(response, isCorrect, rt) {
+        const currentId = currentConditionId;
+        const currentBlock = experimentData[`condition${currentId}`];
+        
+        const data = {
+            condition: currentId,
+            task: currentBlock.task,
+            isTimed: EXPERIMENT_SEQUENCE.find(b => b.id === currentId).timed,
+            stimulus: currentTrial.type === 'stroop' ? currentTrial.word : currentTrial.problem,
+            stimulusColor: currentTrial.color || 'N/A',
+            response: response,
+            correctAnswer: currentTrial.correctResponse,
+            isCorrect: isCorrect,
+            rt: rt.toFixed(2)
+        };
+        currentBlock.trials.push(data);
+    }
+
+    function handleSubmission() {
+        if (!currentTrial || !isResponding) return;
+        
+        const reactionTime = performance.now() - trialStartTime;
+        const participantResponse = elements.mainInput.value.trim();
+        let isCorrect = false;
+
+        if (currentTrial.type === 'stroop') {
+            const normalizedResponse = participantResponse.toLowerCase().replace(/\s/g, ''); 
+            const normalizedCorrect = currentTrial.correctResponse.toLowerCase().replace(/\s/g, '');
+            if (participantResponse === '') {
+                 alert("색깔 단어를 입력해주세요.");
+                 return;
+            }
+            isCorrect = (normalizedResponse === normalizedCorrect);
+
+        } else if (currentTrial.type === 'arithmetic') {
+            const numericResponse = parseInt(participantResponse);
+            
+            if (participantResponse === '' || isNaN(numericResponse)) {
+                 alert("계산 값을 입력해주세요.");
+                 return;
+            }
+            isCorrect = (numericResponse.toString() === currentTrial.correctResponse);
+        }
+
+        isResponding = false;
+        
+        if (!isPractice && !isExtraPractice) {
+            recordTrialData(participantResponse, isCorrect, reactionTime);
+            showFixation();
+        } else { 
+            if (isCorrect) { practiceCorrectCount++; }
+            trialCounter++;
+            const total = isPractice ? PRACTICE_TRIALS : EXTRA_PRACTICE_TRIALS;
+            const blockName = isPractice ? "연습 문제" : "추가 연습";
+            const remaining = total - trialCounter;
+            elements.conditionLabel.textContent = `${blockName}: 스트룹 ${remaining}회 남음 (정답 ${practiceCorrectCount}/${trialCounter}회)`;
+            showFeedback(isCorrect);
+        }
+    }
+
+    // --- 타이머, 결과 계산 및 표시 ---
+    function startTimerDisplay() {
+        elements.timer.style.visibility = 'visible';
+        let timeLeft = STIMULUS_DURATION / 1000;
+        elements.timer.textContent = `${timeLeft}초`;
+        
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            elements.timer.textContent = `${timeLeft}초`;
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                endBlock(); 
+            }
+        }, 1000);
+    }
+
+    function stopTimerDisplay() {
+        clearInterval(timerInterval);
+        elements.timer.style.visibility = 'hidden';
+    }
+
+    function calculateResults(conditionId) {
+        const results = experimentData[`condition${conditionId}`];
+        const correctTrials = results.trials.filter(t => t.isCorrect);
+        const incorrectTrials = results.trials.filter(t => !t.isCorrect);
+        
+        const correctCount = correctTrials.length;
+        const incorrectCount = incorrectTrials.length;
+        const totalTrials = results.trials.length;
+        const accuracy = (correctCount / totalTrials) * 100 || 0;
+        
+        const sumRT = correctTrials.reduce((sum, t) => sum + parseFloat(t.rt), 0);
+        const avgRT = correctCount > 0 ? (sumRT / correctCount).toFixed(2) : 0;
+        
+        results.accuracy = accuracy.toFixed(2);
+        results.totalTrials = totalTrials;
+        results.correctCount = correctCount;
+        results.incorrectCount = incorrectTrials.length;
+        results.avgRT = avgRT; 
+
+        console.log(`\n--- ${EXPERIMENT_SEQUENCE.find(b => b.id === conditionId).name} 결과 ---`);
+        console.log(`총 시행 횟수: ${totalTrials}`);
+        console.log(`정답 횟수: ${correctCount}회, 실패 횟수: ${incorrectCount}회`);
+        console.log(`정확도: ${results.accuracy}%`);
+        console.log(`정답 평균 반응 시간: ${results.avgRT}ms`);
+        console.log('개별 시행 데이터:', results.trials);
+    }
+
+    function showResults() {
+        elements.test.classList.add('hidden');
+        elements.results.classList.remove('hidden');
+        
+        let summaryHTML = '<h3>전체 실험 결과 요약</h3>';
+        
+        EXPERIMENT_SEQUENCE.forEach(block => {
+            const results = experimentData[`condition${block.id}`];
+            summaryHTML += `
+                <h4>${block.name}</h4>
+                <p>총 시행 횟수: ${results.totalTrials}회</p>
+                <p>**정답 횟수:** ${results.correctCount}회 / **실패 횟수:** ${results.incorrectCount}회</p>
+                <p>정확도: ${results.accuracy}%, 평균 RT: ${results.avgRT}ms</p>
+                <hr style="margin-top: 10px;">
+            `;
+        });
+        
+        summaryHTML += '<p style="margin-top: 20px;">⚠️ **주의:** 이 페이지의 결과는 자동 저장되지 않습니다. **콘솔(F12)**에서 데이터를 복사해 주세요.</p>';
+        elements.summary.innerHTML = summaryHTML;
+    }
+
+    // --- 이벤트 리스너 ---
+
+    elements.startButton.addEventListener('click', () => {
+        alert(`총 ${PRACTICE_TRIALS}회의 스트룹 연습 문제를 시간 제한 없이 시작합니다. 응답 방식을 익혀보세요.`);
+        startPractice();
+    });
+
+</script>
+</body>
+</html>
