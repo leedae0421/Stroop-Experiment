@@ -5,7 +5,7 @@ html_content = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title> 당신의 뇌는 몇살인가요? </title>
+    <title> 스트룹 및 산술 과제 결합 실험 </title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -35,7 +35,7 @@ html_content = """
             font-size: 80px;
             font-weight: bold;
             margin: 50px 0;
-            min-height: 120px; /* 자극이 없을 때도 레이아웃 유지 */
+            min-height: 120px; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -47,30 +47,29 @@ html_content = """
             visibility: hidden;
         }
 
-        /* ★★★ 수정된 응답 영역: 버튼 컨테이너와 입력 컨테이너를 분리 ★★★ */
         #response-area {
             width: 100%;
-            display: flex; /* 자식 요소들을 정렬하기 위해 flex 사용 */
+            display: flex; 
             justify-content: center;
-            align-items: flex-start; /* 상단 정렬 */
-            min-height: 150px; /* 응답 요소가 없을 때도 공간 유지 */
+            align-items: flex-start; 
+            min-height: 150px; 
         }
 
         #button-container, #input-container {
-            display: none; /* 기본적으로 숨김 */
+            display: none; 
             flex-wrap: wrap;
             justify-content: center;
             gap: 10px;
             margin-top: 30px;
             width: 100%;
-            max-width: 600px; /* 버튼 컨테이너 최대 너비 */
+            max-width: 600px; 
         }
         #button-container.visible, #input-container.visible {
-            display: flex; /* visible 클래스가 있으면 표시 */
+            display: flex; 
         }
         #input-container.visible {
-            flex-direction: column; /* 입력창은 세로 배열 */
-            max-width: 300px; /* 입력창 컨테이너 최대 너비 */
+            flex-direction: column; 
+            max-width: 300px; 
         }
 
         .color-button {
@@ -80,7 +79,7 @@ html_content = """
             border: 2px solid #ccc;
             border-radius: 5px;
             background-color: #f8f9fa;
-            width: calc(33.333% - 10px); /* ★★★ 3개씩 정렬 (gap 고려) ★★★ */
+            width: calc(33.333% - 10px); 
             box-sizing: border-box;
             transition: background-color 0.1s;
         }
@@ -106,7 +105,7 @@ html_content = """
         #main-input {
             padding: 10px;
             font-size: 1.5em;
-            width: 100%; /* 부모 컨테이너에 맞춤 */
+            width: 100%; 
             text-align: center;
             border: 2px solid #ccc;
             border-radius: 5px;
@@ -119,7 +118,24 @@ html_content = """
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            width: 100%; /* 부모 컨테이너에 맞춤 */
+            width: 100%; 
+        }
+
+        #participant-id-container {
+            margin: 20px auto;
+            max-width: 400px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        #participant-id-input {
+            width: 80%;
+            padding: 8px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
         }
     </style>
 </head>
@@ -127,12 +143,13 @@ html_content = """
 
 <div id="experiment-container">
     <div id="intro-screen">
-        <h2>스트룹 및 산술 과제 결합 실험</h2>
+        <h2>당신의 뇌는 몇살인가요?</h2>
         <p id="instruction-text">
-            실험은 총 4단계로 진행됩니다. 각 단계의 지시에 따라 **스트룹 문제** 또는 **산술 문제**에 응답해 주세요.
+            실험은 총 4단계로 진행됩니다. 각 단계의 지시에 따라 **스트룹 테스트** 와 **덧셈 뺄셈 문제**에 응답해 주세요.
+            <br>각 분야 TOP 3에겐 상품이 있습니다!! 🏆
         </p>
-        <p>스트룹 문제: 화면에 표시되는 **단어의 색깔**과 일치하는 **버튼을 클릭**하여 응답</p>
-        <p>산술 문제: **두 자릿수 덧셈/뺄셈**의 계산 값을 **타이핑**하여 입력 후 제출</p>
+        <p>스트룹 테스트: 화면에 표시되는 *단어의 색깔*과 일치하는 **👆 버튼을 클릭**하여 응답하시고,</p>
+        <p>덧셈 뺄셈 문제: *두 자릿수 덧셈/뺄셈*의 계산 값을 **⌨️ 타이핑**하여 입력 후 제출하시면 됩니다!</p>
         <button id="start-button" class="start-exp-button">실험 시작</button>
     </div>
 
@@ -153,7 +170,13 @@ html_content = """
 
     <div id="results-screen" class="hidden">
         <h2>실험 종료</h2>
-        <p>모든 실험이 완료되었습니다. 결과는 브라우저 콘솔(F12)에 출력됩니다.</p>
+        <p>모든 실험이 완료되었습니다. 결과를 설문지에 첨부해야 합니다.</p>
+        
+        <div id="participant-id-container">
+            <p><strong>스크린샷에 포함할 참가자 ID/닉네임을 입력하세요:</strong></p>
+            <input type="text" id="participant-id-input" placeholder="ID/닉네임 입력">
+        </div>
+        
         <div id="summary"></div>
     </div>
 </div>
@@ -165,7 +188,6 @@ html_content = """
     const EXTRA_PRACTICE_TRIALS = 2; 
     const FEEDBACK_DURATION = 1000; 
 
-    // ★★★ 수정: 보라색 추가 및 COLOR_NAMES/COLOR_VALUES 분리 ★★★
     const COLORS = {
         '검정': 'black',
         '빨강': 'red',
@@ -218,10 +240,11 @@ html_content = """
         timer: document.getElementById('timer'),
         conditionLabel: document.getElementById('condition-label'),
         summary: document.getElementById('summary'),
-        buttonContainer: document.getElementById('button-container'), // ★★★ 버튼 컨테이너 추가 ★★★
+        buttonContainer: document.getElementById('button-container'), 
         inputContainer: document.getElementById('input-container'), 
         mainInput: document.getElementById('main-input'), 
-        submitButton: document.getElementById('submit-button') 
+        submitButton: document.getElementById('submit-button'),
+        participantIdInput: document.getElementById('participant-id-input')
     };
     
     elements.submitButton.addEventListener('click', handleSubmission);
@@ -240,7 +263,6 @@ html_content = """
         
         elements.buttonContainer.innerHTML = buttonHTML;
         
-        // ★★★ 버튼 클릭 이벤트 리스너 연결 ★★★
         document.querySelectorAll('#button-container .color-button').forEach(button => {
             button.addEventListener('click', (event) => handleSubmission(event, 'button_click'));
         });
@@ -280,17 +302,16 @@ html_content = """
 
     // --- 자극 제시 로직 ---
     function presentStimulus(trial) {
-        // ★★★ 응답 인터페이스 분리 로직 ★★★
         if (trial.type === 'stroop') {
             elements.buttonContainer.classList.add('visible');
             elements.inputContainer.classList.remove('visible');
 
             elements.stimulus.textContent = trial.word;
             elements.stimulus.style.color = trial.color;
-        } else { // arithmetic
+        } else { 
             elements.buttonContainer.classList.remove('visible');
             elements.inputContainer.classList.add('visible');
-            elements.mainInput.value = ''; // 입력창 초기화
+            elements.mainInput.value = ''; 
             elements.mainInput.focus();
             elements.mainInput.setAttribute('inputmode', 'numeric');
             elements.mainInput.placeholder = '계산값 입력 후 제출';
@@ -305,7 +326,7 @@ html_content = """
     }
 
     // --- 피드백/Fixation 로직 ---
-    function hideResponseElements() { // 통합된 함수명
+    function hideResponseElements() { 
         elements.buttonContainer.classList.remove('visible');
         elements.inputContainer.classList.remove('visible');
     }
@@ -479,7 +500,6 @@ html_content = """
         currentBlock.trials.push(data);
     }
 
-    // ★★★ 수정: handleSubmission 함수 통합 (클릭 및 입력 처리) ★★★
     function handleSubmission(event, sourceType = 'submit_button') {
         if (!currentTrial || !isResponding) return;
         
@@ -488,18 +508,16 @@ html_content = """
         let isCorrect = false;
 
         if (currentTrial.type === 'stroop') {
-            // 스트룹: 버튼 클릭으로 응답
             if (sourceType === 'button_click') {
                 participantResponse = event.currentTarget.getAttribute('data-color');
-            } else { // 예외적으로 엔터나 제출 버튼 눌렀을 경우 방지 (하지만 스트룹은 버튼 클릭만 기대)
+            } else { 
                 alert("스트룹 테스트는 색상 버튼을 클릭하여 응답해주세요.");
                 return;
             }
-            const correctWord = currentTrial.correctResponse; // 스트룹의 정답은 색상 이름 텍스트
-            isCorrect = (participantResponse === COLORS[correctWord]); // 버튼의 data-color 값과 자극의 실제 색상 비교
+            const correctWord = currentTrial.correctResponse; 
+            isCorrect = (participantResponse === COLORS[correctWord]); 
 
         } else if (currentTrial.type === 'arithmetic') {
-            // 산술: 입력창 타이핑으로 응답
             participantResponse = elements.mainInput.value.trim();
             const numericResponse = parseInt(participantResponse);
             
@@ -592,8 +610,9 @@ html_content = """
             `;
         });
         
-        summaryHTML += '<p style="margin-top: 20px;">⚠️ **주의:** 이 페이지의 결과는 자동 저장되지 않습니다. **콘솔(F12)**에서 데이터를 복사해 주세요.</p>';
         elements.summary.innerHTML = summaryHTML;
+
+        alert("🎉 실험이 완료되었습니다! 🎉\n\n[필수] 결과 화면 전체를 스크린샷 해주세요.\n\n스크린샷에는 반드시 입력하신 ID/닉네임과 실험 결과가 포함되어야 합니다.\n\n스크린샷한 이미지를 설문지에 첨부해야 상품 수령 자격이 주어집니다.");
     }
 
     // --- 이벤트 리스너 ---
