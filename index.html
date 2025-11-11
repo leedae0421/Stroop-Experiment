@@ -1,7 +1,11 @@
+from IPython.display import HTML, display
+import json
+
+html_content = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title> 스트룹 및 산술 과제 결합 실험 </title>
+    <title> 당신의 뇌는 몇살인가요? </title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -31,7 +35,7 @@
             font-size: 80px;
             font-weight: bold;
             margin: 50px 0;
-            min-height: 120px;
+            min-height: 120px; /* 자극이 없을 때도 레이아웃 유지 */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -42,25 +46,67 @@
             margin-bottom: 20px;
             visibility: hidden;
         }
-        /* 응답 영역: 입력창과 버튼만 사용 */
+
+        /* ★★★ 수정된 응답 영역: 버튼 컨테이너와 입력 컨테이너를 분리 ★★★ */
         #response-area {
-            display: flex;
-            justify-content: center;
             width: 100%;
+            display: flex; /* 자식 요소들을 정렬하기 위해 flex 사용 */
+            justify-content: center;
+            align-items: flex-start; /* 상단 정렬 */
+            min-height: 150px; /* 응답 요소가 없을 때도 공간 유지 */
         }
-        #input-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+
+        #button-container, #input-container {
+            display: none; /* 기본적으로 숨김 */
+            flex-wrap: wrap;
+            justify-content: center;
             gap: 10px;
             margin-top: 30px;
             width: 100%;
-            max-width: 300px;
+            max-width: 600px; /* 버튼 컨테이너 최대 너비 */
+        }
+        #button-container.visible, #input-container.visible {
+            display: flex; /* visible 클래스가 있으면 표시 */
+        }
+        #input-container.visible {
+            flex-direction: column; /* 입력창은 세로 배열 */
+            max-width: 300px; /* 입력창 컨테이너 최대 너비 */
+        }
+
+        .color-button {
+            padding: 10px 20px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            width: calc(33.333% - 10px); /* ★★★ 3개씩 정렬 (gap 고려) ★★★ */
+            box-sizing: border-box;
+            transition: background-color 0.1s;
+        }
+        .color-button:hover {
+            border-color: #007bff;
+        }
+        .start-exp-button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5-px;
+            transition: background-color 0.3s;
+        }
+        .start-exp-button:hover {
+            background-color: #0056b3;
+        }
+        .hidden {
+            display: none !important; 
         }
         #main-input {
             padding: 10px;
             font-size: 1.5em;
-            width: 100%;
+            width: 100%; /* 부모 컨테이너에 맞춤 */
             text-align: center;
             border: 2px solid #ccc;
             border-radius: 5px;
@@ -73,23 +119,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            width: 100%;
-        }
-        .start-exp-button {
-            padding: 10px 20px;
-            font-size: 1.2em;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            transition: background-color 0.3s;
-        }
-        .start-exp-button:hover {
-            background-color: #0056b3;
-        }
-        .hidden {
-            display: none !important; 
+            width: 100%; /* 부모 컨테이너에 맞춤 */
         }
     </style>
 </head>
@@ -101,7 +131,7 @@
         <p id="instruction-text">
             실험은 총 4단계로 진행됩니다. 각 단계의 지시에 따라 **스트룹 문제** 또는 **산술 문제**에 응답해 주세요.
         </p>
-        <p>스트룹 문제: 화면에 표시되는 **단어의 색깔**을 **타이핑**하여 입력 후 제출</p>
+        <p>스트룹 문제: 화면에 표시되는 **단어의 색깔**과 일치하는 **버튼을 클릭**하여 응답</p>
         <p>산술 문제: **두 자릿수 덧셈/뺄셈**의 계산 값을 **타이핑**하여 입력 후 제출</p>
         <button id="start-button" class="start-exp-button">실험 시작</button>
     </div>
@@ -112,8 +142,10 @@
         <div id="stimulus"></div>
         
         <div id="response-area">
+            <div id="button-container">
+                </div>
             <div id="input-container">
-                <input type="text" id="main-input" placeholder="여기에 입력 후 제출" autocomplete="off">
+                <input type="text" id="main-input" placeholder="계산값/단어 입력 후 제출" autocomplete="off">
                 <button id="submit-button">제출</button>
             </div>
         </div>
@@ -133,12 +165,14 @@
     const EXTRA_PRACTICE_TRIALS = 2; 
     const FEEDBACK_DURATION = 1000; 
 
+    // ★★★ 수정: 보라색 추가 및 COLOR_NAMES/COLOR_VALUES 분리 ★★★
     const COLORS = {
         '검정': 'black',
         '빨강': 'red',
         '파랑': 'blue',
         '노랑': 'yellow',
-        '초록': 'green'
+        '초록': 'green',
+        '보라': 'purple' 
     };
     const COLOR_NAMES = Object.keys(COLORS); 
     const COLOR_VALUES = Object.values(COLORS); 
@@ -184,6 +218,7 @@
         timer: document.getElementById('timer'),
         conditionLabel: document.getElementById('condition-label'),
         summary: document.getElementById('summary'),
+        buttonContainer: document.getElementById('button-container'), // ★★★ 버튼 컨테이너 추가 ★★★
         inputContainer: document.getElementById('input-container'), 
         mainInput: document.getElementById('main-input'), 
         submitButton: document.getElementById('submit-button') 
@@ -195,6 +230,23 @@
             handleSubmission();
         }
     });
+
+    // --- 초기화: 색상 버튼 생성 ---
+    function createColorButtons() {
+        const buttonHTML = COLOR_NAMES.map((name, index) => {
+            const colorValue = COLOR_VALUES[index];
+            return `<button class="color-button" data-color="${colorValue}">${name}</button>`;
+        }).join('');
+        
+        elements.buttonContainer.innerHTML = buttonHTML;
+        
+        // ★★★ 버튼 클릭 이벤트 리스너 연결 ★★★
+        document.querySelectorAll('#button-container .color-button').forEach(button => {
+            button.addEventListener('click', (event) => handleSubmission(event, 'button_click'));
+        });
+    }
+    createColorButtons();
+
 
     // --- 자극 생성 로직 ---
     function createStroopTrial() {
@@ -228,20 +280,23 @@
 
     // --- 자극 제시 로직 ---
     function presentStimulus(trial) {
-        elements.inputContainer.classList.remove('hidden');
-        elements.mainInput.value = ''; 
-        elements.mainInput.focus();
-
+        // ★★★ 응답 인터페이스 분리 로직 ★★★
         if (trial.type === 'stroop') {
+            elements.buttonContainer.classList.add('visible');
+            elements.inputContainer.classList.remove('visible');
+
             elements.stimulus.textContent = trial.word;
             elements.stimulus.style.color = trial.color;
-            elements.mainInput.setAttribute('inputmode', 'text');
-            elements.mainInput.placeholder = '색깔 단어 입력';
-        } else { 
+        } else { // arithmetic
+            elements.buttonContainer.classList.remove('visible');
+            elements.inputContainer.classList.add('visible');
+            elements.mainInput.value = ''; // 입력창 초기화
+            elements.mainInput.focus();
+            elements.mainInput.setAttribute('inputmode', 'numeric');
+            elements.mainInput.placeholder = '계산값 입력 후 제출';
+
             elements.stimulus.textContent = trial.problem;
             elements.stimulus.style.color = 'black'; 
-            elements.mainInput.setAttribute('inputmode', 'numeric');
-            elements.mainInput.placeholder = '계산값 입력';
         }
         
         trialStartTime = performance.now();
@@ -250,8 +305,9 @@
     }
 
     // --- 피드백/Fixation 로직 ---
-    function hideInputElements() {
-        elements.inputContainer.classList.add('hidden');
+    function hideResponseElements() { // 통합된 함수명
+        elements.buttonContainer.classList.remove('visible');
+        elements.inputContainer.classList.remove('visible');
     }
 
     function showFixation() {
@@ -260,7 +316,7 @@
         currentTrial = null;
         isResponding = false; 
         
-        hideInputElements();
+        hideResponseElements();
         
         if (!isPractice && !isExtraPractice) {
             setTimeout(nextTrial, FIXATION_DURATION); 
@@ -271,7 +327,7 @@
         elements.stimulus.style.color = isCorrect ? '#28a745' : '#dc3545';
         elements.stimulus.textContent = isCorrect ? '정답 (Correct)' : '오답 (Incorrect)';
         
-        hideInputElements(); 
+        hideResponseElements(); 
         
         setTimeout(() => {
             elements.stimulus.textContent = ''; 
@@ -423,23 +479,28 @@
         currentBlock.trials.push(data);
     }
 
-    function handleSubmission() {
+    // ★★★ 수정: handleSubmission 함수 통합 (클릭 및 입력 처리) ★★★
+    function handleSubmission(event, sourceType = 'submit_button') {
         if (!currentTrial || !isResponding) return;
         
         const reactionTime = performance.now() - trialStartTime;
-        const participantResponse = elements.mainInput.value.trim();
+        let participantResponse = '';
         let isCorrect = false;
 
         if (currentTrial.type === 'stroop') {
-            const normalizedResponse = participantResponse.toLowerCase().replace(/\s/g, ''); 
-            const normalizedCorrect = currentTrial.correctResponse.toLowerCase().replace(/\s/g, '');
-            if (participantResponse === '') {
-                 alert("색깔 단어를 입력해주세요.");
-                 return;
+            // 스트룹: 버튼 클릭으로 응답
+            if (sourceType === 'button_click') {
+                participantResponse = event.currentTarget.getAttribute('data-color');
+            } else { // 예외적으로 엔터나 제출 버튼 눌렀을 경우 방지 (하지만 스트룹은 버튼 클릭만 기대)
+                alert("스트룹 테스트는 색상 버튼을 클릭하여 응답해주세요.");
+                return;
             }
-            isCorrect = (normalizedResponse === normalizedCorrect);
+            const correctWord = currentTrial.correctResponse; // 스트룹의 정답은 색상 이름 텍스트
+            isCorrect = (participantResponse === COLORS[correctWord]); // 버튼의 data-color 값과 자극의 실제 색상 비교
 
         } else if (currentTrial.type === 'arithmetic') {
+            // 산술: 입력창 타이핑으로 응답
+            participantResponse = elements.mainInput.value.trim();
             const numericResponse = parseInt(participantResponse);
             
             if (participantResponse === '' || isNaN(numericResponse)) {
@@ -503,7 +564,7 @@
         results.accuracy = accuracy.toFixed(2);
         results.totalTrials = totalTrials;
         results.correctCount = correctCount;
-        results.incorrectCount = incorrectTrials.length;
+        results.incorrectCount = incorrectCount;
         results.avgRT = avgRT; 
 
         console.log(`\n--- ${EXPERIMENT_SEQUENCE.find(b => b.id === conditionId).name} 결과 ---`);
@@ -545,3 +606,6 @@
 </script>
 </body>
 </html>
+"""
+
+display(HTML(html_content))
