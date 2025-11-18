@@ -396,11 +396,12 @@ html_content = """
                 count--;
             } else {
                 clearInterval(interval);
+                // **수정된 부분:** START! 텍스트를 다시 추가합니다.
                 elements.countdownText.textContent = 'START!'; 
                 setTimeout(() => {
                     elements.countdownOverlay.style.display = 'none';
                     if (callback) callback();
-                }, 500); 
+                }, 500); // 0.5초 대기 후 실험 시작
             }
         }, 1000);
     }
@@ -460,7 +461,7 @@ html_content = """
         }
         elements.conditionLabel.innerHTML = blockInstruction; 
         
-        // **수정된 부분:** 카운트다운 시작 전에 자극 영역을 확실히 비웁니다.
+        // **이전 단계의 잔상을 확실히 제거합니다.**
         elements.stimulus.textContent = ''; 
         
         // 본 실험은 카운트다운 유지
