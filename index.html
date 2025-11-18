@@ -421,7 +421,7 @@ html_content = """
         // 연습 시작 안내 문구
         elements.conditionLabel.textContent = `연습 시작: 총 ${PRACTICE_TRIALS}회 스트룹 문제. 응답 방식을 익혀보세요!`;
         
-        // **카운트다운 없이 바로 첫 번째 문제 시작**
+        // 카운트다운 없이 바로 첫 번째 문제 시작
         nextTrial(); 
     }
     
@@ -434,7 +434,7 @@ html_content = """
         // 추가 연습 안내 문구
         elements.conditionLabel.textContent = `추가 연습: ${EXTRA_PRACTICE_TRIALS}회 제공. 응답 방식 숙지 후 시작합니다.`;
         
-        // **카운트다운 없이 바로 첫 번째 문제 시작**
+        // 카운트다운 없이 바로 첫 번째 문제 시작
         nextTrial(); 
     }
 
@@ -459,6 +459,9 @@ html_content = """
             blockInstruction = `**새로운 단계: ${block.name}** | 조용한 환경에서 빠르게 풀어주세요!`;
         }
         elements.conditionLabel.innerHTML = blockInstruction; 
+        
+        // **수정된 부분:** 카운트다운 시작 전에 자극 영역을 확실히 비웁니다.
+        elements.stimulus.textContent = ''; 
         
         // 본 실험은 카운트다운 유지
         startCountdown(() => {
