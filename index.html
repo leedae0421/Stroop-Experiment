@@ -137,9 +137,32 @@ html_content = """
             border-radius: 4px;
             text-align: center;
         }
+        /* 카운트다운 스타일 */
+        #countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none; /* 초기에는 숨김 */
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        #countdown-text {
+            font-size: 150px;
+            color: #ff3b30; /* 밝은 빨간색 */
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(255, 59, 48, 0.7);
+        }
     </style>
 </head>
 <body>
+
+<div id="countdown-overlay">
+    <div id="countdown-text"></div>
+</div>
 
 <div id="experiment-container">
     <div id="intro-screen">
@@ -187,6 +210,7 @@ html_content = """
     const PRACTICE_TRIALS = 3; 
     const EXTRA_PRACTICE_TRIALS = 2; 
     const FEEDBACK_DURATION = 1000; 
+    const COUNTDOWN_DURATION = 3000; // 3초 카운트다운
 
     const COLORS = {
         '검정': 'black',
@@ -244,7 +268,9 @@ html_content = """
         inputContainer: document.getElementById('input-container'), 
         mainInput: document.getElementById('main-input'), 
         submitButton: document.getElementById('submit-button'),
-        participantIdInput: document.getElementById('participant-id-input')
+        participantIdInput: document.getElementById('participant-id-input'),
+        countdownOverlay: document.getElementById('countdown-overlay'), // 카운트다운 오버레이 추가
+        countdownText: document.getElementById('countdown-text') // 카운트다운 텍스트 추가
     };
     
     elements.submitButton.addEventListener('click', handleSubmission);
@@ -270,7 +296,7 @@ html_content = """
     createColorButtons();
 
 
-    // --- 자극 생성 로직 ---
+    // --- 자극 생성 로직 (기존과 동일) ---
     function createStroopTrial() {
         const words = COLOR_NAMES;
         const word = words[Math.floor(Math.random() * words.length)];
@@ -300,7 +326,7 @@ html_content = """
         return { type: 'arithmetic', problem, correctResponse: correctResponse.toString() };
     }
 
-    // --- 자극 제시 로직 ---
+    // --- 자극 제시 로직 (기존과 동일) ---
     function presentStimulus(trial) {
         if (trial.type === 'stroop') {
             elements.buttonContainer.classList.add('visible');
@@ -325,7 +351,7 @@ html_content = """
         isResponding = true; 
     }
 
-    // --- 피드백/Fixation 로직 ---
+    // --- 피드백/Fixation 로직 (기존과 동일) ---
     function hideResponseElements() { 
         elements.buttonContainer.classList.remove('visible');
         elements.inputContainer.classList.remove('visible');
@@ -359,7 +385,28 @@ html_content = """
         }, FEEDBACK_DURATION);
     }
 
-    // --- 실험 흐름 로직 ---
+    // --- 카운트다운 로직 추가 ---
+    function startCountdown(callback) {
+        let count = 3;
+        elements.countdownOverlay.style.display = 'flex';
+        
+        const interval = setInterval(() => {
+            if (count > 0) {
+                elements.countdownText.textContent = count;
+                count--;
+            } else {
+                clearInterval(interval);
+                elements.countdownText.textContent = 'START!';
+                setTimeout(() => {
+                    elements.countdownOverlay.style.display = 'none';
+                    if (callback) callback();
+                }, 500); // START 표시 후 0.5초 뒤 숨김
+            }
+        }, 1000);
+    }
+
+
+    // --- 실험 흐름 로직 수정 ---
     let experimentStartTime = 0;
     
     function startPractice() {
@@ -372,7 +419,7 @@ html_content = """
         elements.test.classList.remove('hidden');
         elements.conditionLabel.textContent = `연습 문제: 스트룹 ${PRACTICE_TRIALS}회 남음`;
         
-        nextTrial(); 
+        startCountdown(nextTrial);
     }
     
     function startExtraPractice() {
@@ -383,9 +430,9 @@ html_content = """
         
         elements.conditionLabel.textContent = `추가 연습: 스트룹 ${EXTRA_PRACTICE_TRIALS}회 남음`;
         
-        alert(`이전 연습 문제에서 모두 틀렸으므로 추가 연습 ${EXTRA_PRACTICE_TRIALS}회를 제공합니다. 다시 한번 응답 방식을 익혀보세요.`);
+        alert(`이전 연습 문제에서 모두 틀렸으므로 추가 연습 ${EXTRA_PRACTICE_TRIALS}회를 제공합니다. 응답 방식을 다시 한번 익혀보세요.`);
         
-        nextTrial(); 
+        startCountdown(nextTrial); 
     }
 
     function startBlock() {
@@ -399,11 +446,10 @@ html_content = """
         elements.test.classList.remove('hidden');
         elements.conditionLabel.textContent = `${block.name}`;
         
-        let alertMessage = `새로운 단계가 시작됩니다: ${block.name}. 최대한 빠르게 풀어주세요.`;
+        let alertMessage = `**새로운 단계: ${block.name}**\n조용한 환경에서 최대한 빠르게 풀어주세요!`;
         if (block.timed) {
             elements.timer.style.visibility = 'visible'; 
-            alertMessage = `[경고: 시간 제한] 이 단계는 20초의 시간 제한이 있습니다! \n\n제한 시간 내에 최대한 많은 문제를 정확하게 풀어주세요! \n\n${block.name}을(를) 시작합니다.`;
-            startTimerDisplay(); 
+            alertMessage = `**[시간 제한] ${block.name} (20초)**\n제한 시간 내에 최대한 많은 문제를 정확히 풀어주세요! (조용한 환경 필수)`;
         } else {
             elements.timer.style.visibility = 'hidden';
             stopTimerDisplay(); 
@@ -411,10 +457,16 @@ html_content = """
 
         alert(alertMessage);
         
-        experimentStartTime = performance.now();
-        showFixation(); 
+        startCountdown(() => {
+            experimentStartTime = performance.now();
+            if (block.timed) {
+                startTimerDisplay();
+            }
+            showFixation(); 
+        });
     }
 
+    // --- nextTrial 등 나머지 로직은 기존과 동일 ---
     function nextTrial() {
         if (isPractice || isExtraPractice) {
             if ((isPractice && trialCounter >= PRACTICE_TRIALS) || (isExtraPractice && trialCounter >= EXTRA_PRACTICE_TRIALS)) {
@@ -481,7 +533,7 @@ html_content = """
         }
     }
 
-    // --- 통합 응답 처리 로직 ---
+    // --- 통합 응답 처리 로직 (기존과 동일) ---
     function recordTrialData(response, isCorrect, rt) {
         const currentId = currentConditionId;
         const currentBlock = experimentData[`condition${currentId}`];
@@ -544,7 +596,7 @@ html_content = """
         }
     }
 
-    // --- 타이머, 결과 계산 및 표시 ---
+    // --- 타이머, 결과 계산 및 표시 (기존과 동일) ---
     function startTimerDisplay() {
         elements.timer.style.visibility = 'visible';
         let timeLeft = STIMULUS_DURATION / 1000;
