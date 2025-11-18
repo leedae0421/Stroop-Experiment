@@ -269,8 +269,8 @@ html_content = """
         mainInput: document.getElementById('main-input'), 
         submitButton: document.getElementById('submit-button'),
         participantIdInput: document.getElementById('participant-id-input'),
-        countdownOverlay: document.getElementById('countdown-overlay'), // 카운트다운 오버레이 추가
-        countdownText: document.getElementById('countdown-text') // 카운트다운 텍스트 추가
+        countdownOverlay: document.getElementById('countdown-overlay'), 
+        countdownText: document.getElementById('countdown-text') 
     };
     
     elements.submitButton.addEventListener('click', handleSubmission);
@@ -385,7 +385,7 @@ html_content = """
         }, FEEDBACK_DURATION);
     }
 
-    // --- 카운트다운 로직 추가 ---
+    // --- 카운트다운 로직 (기존과 동일) ---
     function startCountdown(callback) {
         let count = 3;
         elements.countdownOverlay.style.display = 'flex';
@@ -396,17 +396,17 @@ html_content = """
                 count--;
             } else {
                 clearInterval(interval);
-                elements.countdownText.textContent = 'START!';
+                elements.countdownText.textContent = 'START!'; 
                 setTimeout(() => {
                     elements.countdownOverlay.style.display = 'none';
                     if (callback) callback();
-                }, 500); // START 표시 후 0.5초 뒤 숨김
+                }, 500); 
             }
         }, 1000);
     }
 
 
-    // --- 실험 흐름 로직 수정 ---
+    // --- 실험 흐름 로직 수정: alert 제거 및 conditionLabel로 안내 통합 ---
     let experimentStartTime = 0;
     
     function startPractice() {
@@ -417,7 +417,9 @@ html_content = """
         
         elements.intro.classList.add('hidden');
         elements.test.classList.remove('hidden');
-        elements.conditionLabel.textContent = `연습 문제: 스트룹 ${PRACTICE_TRIALS}회 남음`;
+        
+        // 연습 시작 안내 문구
+        elements.conditionLabel.textContent = `연습 시작: 총 ${PRACTICE_TRIALS}회 스트룹 문제. 응답 방식을 익혀보세요!`;
         
         startCountdown(nextTrial);
     }
@@ -428,9 +430,8 @@ html_content = """
         trialCounter = 0;
         practiceCorrectCount = 0; 
         
-        elements.conditionLabel.textContent = `추가 연습: 스트룹 ${EXTRA_PRACTICE_TRIALS}회 남음`;
-        
-        alert(`이전 연습 문제에서 모두 틀렸으므로 추가 연습 ${EXTRA_PRACTICE_TRIALS}회를 제공합니다. 응답 방식을 다시 한번 익혀보세요.`);
+        // 추가 연습 안내 문구 (alert 대신 conditionLabel 사용)
+        elements.conditionLabel.textContent = `추가 연습: ${EXTRA_PRACTICE_TRIALS}회 제공. 응답 방식 숙지 후 시작합니다.`;
         
         startCountdown(nextTrial); 
     }
@@ -444,20 +445,21 @@ html_content = """
         trialCounter = 0;
         
         elements.test.classList.remove('hidden');
-        elements.conditionLabel.textContent = `${block.name}`;
-        
-        let alertMessage = `**새로운 단계: ${block.name}**\n조용한 환경에서 최대한 빠르게 풀어주세요!`;
+
+        // 블록 시작 안내 문구 설정 (alert 제거)
+        let blockInstruction;
         if (block.timed) {
             elements.timer.style.visibility = 'visible'; 
-            alertMessage = `**[시간 제한] ${block.name} (20초)**\n제한 시간 내에 최대한 많은 문제를 정확히 풀어주세요! (조용한 환경 필수)`;
+            blockInstruction = `**[시간 제한] ${block.name} (20초)** | 최대한 많이, 정확하게 풀어주세요! (조용한 환경 필수)`;
         } else {
             elements.timer.style.visibility = 'hidden';
             stopTimerDisplay(); 
+            blockInstruction = `**새로운 단계: ${block.name}** | 조용한 환경에서 빠르게 풀어주세요!`;
         }
-
-        alert(alertMessage);
+        elements.conditionLabel.innerHTML = blockInstruction; 
         
         startCountdown(() => {
+            // 카운트다운 완료 후 타이머 시작 및 자극 제시
             experimentStartTime = performance.now();
             if (block.timed) {
                 startTimerDisplay();
@@ -629,7 +631,7 @@ html_content = """
         const accuracy = (correctCount / totalTrials) * 100 || 0;
         
         const sumRT = correctTrials.reduce((sum, t) => sum + parseFloat(t.rt), 0);
-        const avgRT = correctCount > 0 ? (sumRT / correctCount).toFixed(2) : 0;
+        const avgRT = correctCount > 0 ? (sumRT / correctTrials.length).toFixed(2) : 0;
         
         results.accuracy = accuracy.toFixed(2);
         results.totalTrials = totalTrials;
@@ -670,7 +672,7 @@ html_content = """
     // --- 이벤트 리스너 ---
 
     elements.startButton.addEventListener('click', () => {
-        alert(`총 ${PRACTICE_TRIALS}회의 스트룹 연습 문제를 시간 제한 없이 시작합니다. 응답 방식을 익혀보세요.`);
+        // alert 제거: 바로 연습 시작
         startPractice();
     });
 
